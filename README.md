@@ -1,5 +1,5 @@
 # AutoReplayUploader
-BakkesMod plugin that automatically uploads Rocket League replays to other services (calculated.gg, ballchasing.com) when a match ends.
+BakkesMod plugin that automatically uploads Rocket League replays to other services (calculated.gg, ballchasing.com, carball.pro) when a match ends.
 
 ## Description of Source Projects
 
@@ -89,6 +89,7 @@ Individual components
 
 Upload to Calculated - Enable automatic replay uploading to calculated.gg
 Upload to Balchasing - Enable automatic replay uploading to ballchasing.com
+Upload to Carball - Enable automatic replay uploading to Carball.pro
 
 Replay visibility - Sets the replay visiblity on ballchasing.com when it uploads a replay. Possible values include:
 * public
@@ -96,6 +97,13 @@ Replay visibility - Sets the replay visiblity on ballchasing.com when it uploads
 * unlisted
 
 Ballchasing auth key - an authentication key required by ballchasing.com to autoupload replays. Get one at https://ballchasing.com/upload
+
+Replay visibility - Sets the replay visiblity on carball.pro when it uploads a replay. Possible values include:
+* public
+* private
+* unlisted
+
+Carball.pro auth key - an authentication key required by carball.pro to autoupload replays. Get one at https://carball.pro/u/upload
 
 Replay Name Template - A templatized string to name your replays.  Possible token's that will be replaced are:
 * {PLAYER} - Name of current player

@@ -6,6 +6,7 @@
 
 #include "Ballchasing.h"
 #include "Calculated.h"
+#include "Carball.h"
 
 
 #define DEAULT_EXPORT_PATH "./bakkesmod/data/"
@@ -20,11 +21,14 @@ private:
 	// Upload handlers
 	Ballchasing* ballchasing;
 	Calculated* calculated;
+	Carball* carball;
 
 	// Which endpoints to upload to
 	std::shared_ptr<bool> uploadToCalculated = std::make_shared<bool>(false);
 	std::shared_ptr<bool> uploadToBallchasing = std::make_shared<bool>(false);
 	std::shared_ptr<bool> uploadToBallchasingMMR = std::make_shared<bool>(false);
+	std::shared_ptr<bool> uploadToCarball = std::make_shared<bool>(false);
+	std::shared_ptr<bool> uploadToCarballMR = std::make_shared<bool>(false);
 
 	// Replay name template variables
 	std::shared_ptr<int> templateSequence = std::make_shared<int>(0);

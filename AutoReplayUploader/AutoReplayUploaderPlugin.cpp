@@ -11,6 +11,7 @@
 #include "Utils.h"
 #include "Ballchasing.h"
 #include "Calculated.h"
+#include "Carball.h"
 #include "Match.h"
 #include "Player.h"
 #include "Replay.h"
@@ -25,6 +26,8 @@ BAKKESMOD_PLUGIN(AutoReplayUploaderPlugin, "Auto replay uploader plugin", "0.2",
 #define CVAR_UPLOAD_TO_CALCULATED "cl_autoreplayupload_calculated"
 #define CVAR_UPLOAD_TO_BALLCHASING "cl_autoreplayupload_ballchasing"
 #define CVAR_UPLOAD_TO_BALLCHASING_MMR "cl_autoreplayupload_ballchasing_mmr"
+#define CVAR_UPLOAD_TO_CARBALL "cl_autoreplayupload_carball"
+#define CVAR_UPLOAD_TO_CARBALL_MMR "cl_autoreplayupload_carball_mmr"
 #define CVAR_REPLAY_NAME_TEMPLATE "cl_autoreplayupload_replaynametemplate"
 #define CVAR_REPLAY_SEQUENCE_NUM "cl_autoreplayupload_replaysequence"
 #define CVAR_PLUGIN_SHOW_NOTIFICATIONS "cl_autoreplayupload_notifications"
@@ -32,6 +35,9 @@ BAKKESMOD_PLUGIN(AutoReplayUploaderPlugin, "Auto replay uploader plugin", "0.2",
 #define CVAR_BALLCHASING_AUTH_TEST_RESULT "cl_autoreplayupload_ballchasing_testkeyresult"
 #define CVAR_BALLCHASING_REPLAY_VISIBILITY "cl_autoreplayupload_ballchasing_visibility"
 #define CVAR_CALCULATED_REPLAY_VISIBILITY "cl_autoreplayupload_calculated_visibility"
+#define CVAR_CARBALL_AUTH_KEY "cl_autoreplayupload_carball_authkey"
+#define CVAR_CARBALL_AUTH_TEST_RESULT "cl_autoreplayupload_carball_testkeyresult"
+#define CVAR_CARBALL_REPLAY_VISIBILITY "cl_autoreplayupload_carball_visibility"
 
 Player ConstructPlayer(PriWrapper wrapper)
 {
@@ -144,6 +150,18 @@ void BallchasingAuthTestComplete(void* object, bool result)
 	plugin->cvarManager->getCvar(CVAR_BALLCHASING_AUTH_TEST_RESULT).setValue(msg);
 }
 
+void CarballUploadComplete(void* object, bool result)
+{
+	UploadComplete((AutoReplayUploaderPlugin*)object, result, "carball");
+}
+
+void CarballAuthTestComplete(void* object, bool result)
+{
+	auto plugin = (AutoReplayUploaderPlugin*)object;
+	std::string msg = result ? "Auth key correct!" : "Invalid auth key!";
+	plugin->cvarManager->getCvar(CVAR_CARBALL_AUTH_TEST_RESULT).setValue(msg);
+}
+
 #pragma region AutoReplayUploaderPlugin Implementation
 
 /**
@@ -160,6 +178,7 @@ void AutoReplayUploaderPlugin::onLoad()
 	// Setup upload handlers
 	ballchasing = new Ballchasing(userAgent, &Log, &BallchasingUploadComplete, &BallchasingAuthTestComplete, this);
 	calculated = new Calculated(userAgent, &Log, &CalculatedUploadComplete, this);
+	carball = new Carball(userAgent, &Log, &CarballUploadComplete, &CarballAuthTestComplete, this);
 
 	InitializeVariables();
 
@@ -222,6 +241,7 @@ void AutoReplayUploaderPlugin::onUnload()
 {
 	delete ballchasing;
 	delete calculated;
+	delete carball;
 }
 
 void AutoReplayUploaderPlugin::InitializeVariables()
@@ -253,6 +273,30 @@ void AutoReplayUploaderPlugin::InitializeVariables()
 			{
 				// value changed so test auth key
 				ballchasing->TestAuthKey();
+			}
+		}
+	});
+	
+	// Carball.pro variables	
+	cvarManager->registerCvar(CVAR_UPLOAD_TO_CARBALL, "0", "Upload to replays to carball.pro automatically", true, true, 0, true, 1).bindTo(uploadToCarball);
+	cvarManager->registerCvar(CVAR_UPLOAD_TO_CARBALL_MMR, "0", "Upload mmr data to carball.pro automatically", true, true, 0, true, 1).bindTo(uploadToCArballMMR);
+	cvarManager->registerCvar(CVAR_CARBALL_REPLAY_VISIBILITY, "public", "Replay visibility when uploading to carball.pro", false, false, 0, false, 0, true).bindTo(carball->visibility);
+	cvarManager->registerCvar(CVAR_CARBALL_AUTH_TEST_RESULT, "Untested", "Auth token needed to upload replays to carball.pro", false, false, 0, false, 0, false);
+	cvarManager->registerCvar(CVAR_CARBALL_AUTH_KEY, "", "Auth token needed to upload replays to carball.pro").bindTo(carball->authKey);
+	cvarManager->getCvar(CVAR_CARBALL_AUTH_KEY).addOnValueChanged([this](std::string oldVal, CVarWrapper cvar)
+	{   
+		if (carball->authKey->size() > 0 &&         // We don't test the auth key if the size of the auth key is empty
+			carball->authKey->compare(oldVal) != 0) // We don't test unless the value has changed
+		{
+			auto elapsed = std::chrono::steady_clock::now() - pluginLoadTime;
+			if (std::chrono::duration_cast<std::chrono::milliseconds>(elapsed) < std::chrono::milliseconds(5000))
+			{
+				cvarManager->log("Not checking auth key since plugin was loaded recently");
+			}
+			else
+			{
+				// value changed so test auth key
+				carball->TestAuthKey();
 			}
 		}
 	});
@@ -294,7 +338,7 @@ void AutoReplayUploaderPlugin::InitializeVariables()
 */
 void AutoReplayUploaderPlugin::OnGameComplete(ServerWrapper caller, void * params, std::string eventName)
 {
-	if (!(*uploadToCalculated) && !(*uploadToBallchasing) && !(*saveReplay)) // Bail if we aren't uploading or saving replays
+	if (!(*uploadToCalculated) && !(*uploadToBallchasing) && !(*uploadToCarball) && !(*saveReplay)) // Bail if we aren't uploading or saving replays
 	{
 		return; //Not uploading replays
 	}
@@ -366,6 +410,30 @@ void AutoReplayUploaderPlugin::OnGameComplete(ServerWrapper caller, void * param
 						cvarManager->log("\t" + p.debug);
 					}
 					ballchasing->UploadMMr(mmrCache.data);
+					mmrCache.Clear();
+				}, 3);
+			}
+		}
+		else {
+			mmrCache.Clear();
+		}
+		
+	}
+	if (*uploadToCarball)
+	{
+		carball->UploadReplay(replayPath);
+		if (*uploadToCarballMMR) {
+			auto server = gameWrapper->GetOnlineGame();
+			if (server) {
+				mmrCache.SetMatchGuid(server);
+				mmrCache.addToAfter = true;
+				gameWrapper->SetTimeout([&](auto gw) {
+					cvarManager->log("Uploading with match id: " + mmrCache.data.game);
+					cvarManager->log("the cache contains " + std::to_string(mmrCache.data.players.size()) + " players");
+					for (auto p : mmrCache.data.players) {
+						cvarManager->log("\t" + p.debug);
+					}
+					carball->UploadMMr(mmrCache.data);
 					mmrCache.Clear();
 				}, 3);
 			}

@@ -1,5 +1,6 @@
 #include "Ballchasing.h"
 #include "Calculated.h"
+#include "Carball.h"
 #include "Utils.h"
 #include "Replay.h"
 
@@ -28,6 +29,16 @@ void BallchasingAuthTestComplete(void* object, bool result)
 	std::cout << "Ballchasing authtest completed with result: " << result;
 }
 
+void CarballUploadComplete(void* object, bool result)
+{
+	std::cout << "Carball upload completed with result: " << result;
+}
+
+void CarballAuthTestComplete(void* object, bool result)
+{
+	std::cout << "Carball authtest completed with result: " << result;
+}
+
 int main()
 {
 	std::string filename = "979B723811E971FCE06E328BDF9F6172.replay";
@@ -41,6 +52,11 @@ int main()
 	Calculated* calculated = new Calculated("consoleuploader", &Log, &CalculatedUploadComplete, NULL);
 	*(calculated->visibility) = "PUBLIC";
 	calculated->UploadReplay(replayFile, "76561198011976380");
+
+	Carball* carball = new Carball("consoleuploader", &Log, &CarballUploadComplete, &CarballAuthTestComplete, NULL);
+	*(carball->authKey) = "test";
+	*(carball->visibility) = "public";
+	carball->UploadReplay(replayFile);
 
 	system("PAUSE");
 }
