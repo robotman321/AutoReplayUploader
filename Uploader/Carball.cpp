@@ -90,7 +90,7 @@ void Carball::UploadReplay(std::string replayPath)
 	request->Url = AppendGetParams("https://carball.pro/api/upload", { {"visibility", *visibility} });
     request->FilePath = destPath;
 	request->ParamName = "file";
-	request->Headers.push_back("Authorization: " + *authKey);
+	request->Headers.push_back("Authorization: Bearer " + *authKey);
 	request->Headers.push_back("UserAgent: " + UserAgent);
 	request->RequestComplete = &CarballRequestComplete;
 	request->RequestId = 1;
@@ -113,7 +113,7 @@ void Carball::UploadMMr(MMRData data)
 
 		PostJsonRequest* request = new PostJsonRequest();
 		request->Url = "https://carball.pro/api/mmr";
-		request->Headers.push_back("Authorization: " + *authKey);
+		request->Headers.push_back("Authorization: Bearer " + *authKey);
 		request->Headers.push_back("UserAgent: " + UserAgent);
 		request->body = body;
 		request->RequestComplete = &CarballRequestComplete;
@@ -137,7 +137,7 @@ void Carball::TestAuthKey()
 {
 	GetRequest *request = new GetRequest();
 	request->Url = "https://carball.pro/api/";
-	request->Headers.push_back("Authorization: " + *authKey);
+	request->Headers.push_back("Authorization: Bearer " + *authKey);
 	request->Headers.push_back("UserAgent: " + UserAgent);
 	request->RequestComplete = &CarballRequestComplete;
 	request->RequestId = 2;
